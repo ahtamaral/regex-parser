@@ -1,9 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define BUFFER_SIZE 1024
-#define QUEUE_MAX_SIZE 1024
 
+typedef struct parserState
+{
+    char buffer[BUFFER_SIZE];
+    char curChar;
+    char nextChar;
+    int curIndex;
+} ParserState;
+
+
+// ------------------------------------------------
+// Código proposto no enunciado.
 
 enum RegExpTag {
     TAG_EMPTY,
@@ -29,23 +40,21 @@ struct RegExp {
 };
 typedef struct RegExp RegExp;
 
-
-
 RegExp *new_empty();
 RegExp *new_char(char c);
 RegExp *new_star(RegExp *filho);
 RegExp *new_concat(RegExp *filho1, RegExp *filho2);
 RegExp *new_union(RegExp *filho1, RegExp *filho2);
 
-void printTree(RegExp *tree);
+static RegExp *parse_regexp(char buffer[BUFFER_SIZE]);
+static RegExp *parse_uniao(char buffer[BUFFER_SIZE]);
+static RegExp *parse_concat(char buffer[BUFFER_SIZE]);
+static RegExp *parse_estrela(char buffer[BUFFER_SIZE]);
+static RegExp *parse_basico(char buffer[BUFFER_SIZE]);
 
+// ------------------------------------------------
 
-static RegExp *parse_regexp();
-static RegExp *parse_uniao();
-static RegExp *parse_concat();
-static RegExp *parse_estrela();
-static RegExp *parse_basico();
-
+void printTreePreOrder(RegExp *tree, int level);
 
 RegExp *new_empty(){
     RegExp* re = (RegExp*)malloc(sizeof(RegExp));
@@ -112,7 +121,7 @@ RegExp *new_union(RegExp *filho1, RegExp *filho2){
 void printTreePreOrder(RegExp* root, int level) {
     
     if (root == NULL) {
-        printf("\n"); 
+        printf("\n\n"); 
         return;
     }
 
@@ -139,68 +148,195 @@ void printTreePreOrder(RegExp* root, int level) {
     }
 }
 
+unsigned short isStarOperator (char c){
+    if (c == '*')
+        return 1;
+    return 0;
+}
+
+unsigned short isUnionOperator (char c){
+    if (c == '|')
+        return 1;
+    return 0;
+}
+
+unsigned short isNewLine (char c){
+    if (c == '\n')
+        return 1;
+    return 0;
+}
+
+unsigned short isEndOfFile(char c){
+    if (c == '\0')
+        return 1;
+    return 0;
+}
+
+unsigned short isOpenParethesis(char c){
+    if (c == '(')
+        return 1;
+    return 0;
+}
+
+unsigned short isCloseParethesis(char c){
+    if (c == ')')
+        return 1;
+    return 0;
+}
+
+unsigned short isSpecialCharacter(char c) {
+    // Se qualquer um desses retornos for verdadeiro, o caracter é especial (OR lógico).
+    return isStarOperator(c) ||
+            isUnionOperator(c) ||
+            isNewLine(c) ||
+            isEndOfFile(c) ||
+            isOpenParethesis(c) ||
+            isCloseParethesis(c);
+}
+
+unsigned short isChar(char c){
+    if (isSpecialCharacter(c) == 0)
+        return 1;
+    return 0;
+}
+
+RegExp* parse_concat(char buffer[BUFFER_SIZE])
+{
+    printf("parse_concat(): %s\n", buffer);
+}
+
+RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
+{
+    printf("parse_uniao(): %s\n", UnionExpString);
+
+    int regExpLen = strlen(UnionExpString);
+    
+    int curIdx = 0;
+    char curChar = UnionExpString[curIdx];
+
+    char leftChild[BUFFER_SIZE];
+    char rightChild[BUFFER_SIZE];
+
+    int unionOperatorFound = 0;
+
+    while (isNewLine(curChar) != 1){
+        
+        if (isUnionOperator(curChar) == 1) {
+            unionOperatorFound = 1;
+            break;
+        }
+
+        curIdx += 1;
+        curChar = UnionExpString[curIdx];
+    }
+
+    if (unionOperatorFound == 0)
+    {
+        parse_concat(UnionExpString);
+    }
+    else {
+        int unionIdx = curIdx;
+
+        strncpy(leftChild, UnionExpString, unionIdx);
+        strncpy(rightChild, UnionExpString + unionIdx + 1, regExpLen);
+
+        printf("Left child: %s\n", leftChild);
+        printf("Right child: %s\n", rightChild);
+
+        parse_concat(leftChild);
+        parse_regexp(rightChild);
+    }
+
+}
+
+RegExp * parse_regexp(char regExpString[BUFFER_SIZE])
+{
+
+    printf("parse_regexp(): %s\n", regExpString);
+
+    parse_uniao(regExpString);
+}
+
+/*
+    parse_regexp recebe uma string que É uma união.
+
+    abc|def|ghi
+
+    é dividida em "abc" e "def|ghi".
+    O da esquerda vai para um parse_concat, equanto o da direita vai para um parse_union.
+
+    Se não acha um '|', o parse_union manda a string toda pro parse_concat.
+
+ */
+
+// ab | c
+
 int main(int argc, char *argv[]) {
+
     char buffer[BUFFER_SIZE];
 
     while(fgets(buffer, BUFFER_SIZE, stdin)){
-        //printf("%s", buffer);
-    } 
+        printf("RegExp: %s\n\n", buffer);
 
-    // Caso de teste 1: abc** <---> a(b(c**))
-    
-    printf("RegExp: abc**\n\n");
+        parse_regexp(buffer);
 
-    RegExp* c = new_char('c');
-    
-    RegExp* star1 = new_star(c);
-    RegExp* star2 = new_star(star1);
-    
-    RegExp* b = new_char('b');
-    RegExp* concat1 = new_concat(b, star2);
-    RegExp* a = new_char('a');
-    RegExp* concat2 = new_concat(a, concat1);
-
-    RegExp* root = concat2;
-
-    printTreePreOrder(root, 0);
-
-    printf("\n");
-
-    // Caso 2: (ab||c)
-
-    printf("RegExp: (ab||c)\n\n");
-    RegExp * a1 = new_char('a');
-    RegExp * b1 = new_char('b');
-
-    RegExp * concat = new_concat(a1, b1);
-
-    RegExp * c1 = new_char('c');
-    RegExp * empty = new_empty();
-
-    RegExp * union1 = new_union(c1, empty);
-
-    RegExp * union2 = new_union(concat, union1);
-
-    RegExp * root1 = union2;
-
-    printTreePreOrder(root1, 0);
-
-    // Caso 3: abc
-
-    printf("RegExp: abc\n\n");
-
-    RegExp* b2 = new_char('b');
-    RegExp* c2 = new_char('c');
-    RegExp* concat11 = new_concat(b2, c2);
-
-
-    RegExp* a2 = new_char('a');
-    RegExp* concat22 = new_concat(a2, concat11);
-
-    RegExp* root2 = concat22;
-
-    // printTree(root);
-    printTreePreOrder(root2, 0);
+    }
 
     return 0;
 }
+
+// Caso de teste 1: abc** <---> a(b(c**))
+    
+    // printf("RegExp: abc**\n\n");
+
+    // RegExp* c = new_char('c');
+    
+    // RegExp* star1 = new_star(c);
+    // RegExp* star2 = new_star(star1);
+    
+    // RegExp* b = new_char('b');
+    // RegExp* concat1 = new_concat(b, star2);
+    // RegExp* a = new_char('a');
+    // RegExp* concat2 = new_concat(a, concat1);
+
+    // RegExp* root = concat2;
+
+    // printTreePreOrder(root, 0);
+
+    // printf("\n");
+
+    // // Caso 2: (ab||c)
+
+    // printf("RegExp: (ab||c)\n\n");
+    // RegExp * a1 = new_char('a');
+    // RegExp * b1 = new_char('b');
+
+    // RegExp * concat = new_concat(a1, b1);
+
+    // RegExp * c1 = new_char('c');
+    // RegExp * empty = new_empty();
+
+    // RegExp * union1 = new_union(c1, empty);
+
+    // RegExp * union2 = new_union(concat, union1);
+
+    // RegExp * root1 = union2;
+
+    // printTreePreOrder(root1, 0);
+
+    // // Caso 3: abc
+
+    // printf("RegExp: abc\n\n");
+
+    // RegExp* b2 = new_char('b');
+    // RegExp* c2 = new_char('c');
+    // RegExp* concat11 = new_concat(b2, c2);
+
+
+    // RegExp* a2 = new_char('a');
+    // RegExp* concat22 = new_concat(a2, concat11);
+
+    // RegExp* root2 = concat22;
+
+    // // printTree(root);
+    // printTreePreOrder(root2, 0);
