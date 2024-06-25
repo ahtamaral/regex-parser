@@ -205,7 +205,7 @@ unsigned short isChar(char c){
 
 RegExp *parse_basico(char basicExpChar)
 {
-    // printf("parse_basico(): %c\n", basicExpChar);
+    // printf("parse_basico() recebeu: %c\n", basicExpChar);
 
     RegExp *basicExp = new_char(basicExpChar);
 
@@ -214,7 +214,7 @@ RegExp *parse_basico(char basicExpChar)
 
 RegExp *parse_estrela(char starExpString[BUFFER_SIZE])
 {
-    // printf("parse_estrela(): %s\n", starExpString);
+    // printf("parse_estrela() recebeu: %s\n", starExpString);
 
     RegExp *basicExp = parse_basico(starExpString[0]);
 
@@ -225,19 +225,18 @@ RegExp *parse_estrela(char starExpString[BUFFER_SIZE])
 
 RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
 {
-    // printf("parse_concat(): %s\n", ConcatExpString);
+    // printf("parse_concat() recebeu: %s\n", ConcatExpString);
 
     int concatExpLen = strlen(ConcatExpString);
 
     // Condição de contorno: Expressão de concat tem tamanho mínimo.
+    // Ação: Retorna um RegExp de caracter direto.
 
     if (concatExpLen <= MINIMUM_EXP_STR_SIZE)
     {
         RegExp* returnedExp = new_char(ConcatExpString[0]);
         return returnedExp;
     }
-
-    // printf("A\n");
 
     int curIdx = 0;
     char nextChar = ConcatExpString[curIdx + 1];
@@ -259,7 +258,6 @@ RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
             child1 = parse_estrela(leftChild);
             return child1;
     }
-    // printf("B\n");
 
     if (isStarOperator(nextChar)) {
         starOffset = 1;
@@ -293,13 +291,11 @@ RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
     RegExp* concatExp = new_concat(child1, child2);
 
     return concatExp;
-
-    // Se comprimento do filho da esquerda > 1, parsea concat. Senão parsea básico.
 }
 
 RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
 {
-    // printf("parse_uniao(): %s\n", UnionExpString);
+    // printf("parse_uniao() recebeu: %s\n", UnionExpString);
 
     int regExpLen = strlen(UnionExpString);
     
@@ -315,7 +311,6 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
         
         if (isUnionOperator(curChar) == 1) {
             unionOperatorFound = 1;
-            // printf("Operator | found at position %d\n", curIdx);
             break;
         }
 
@@ -339,7 +334,7 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
     }
     else {
         int unionIdx = curIdx;
-        // printf("Entered there\n.");
+
         strncpy(leftChild, UnionExpString, unionIdx);
         strncpy(rightChild, UnionExpString + unionIdx + 1, regExpLen);
 
@@ -356,24 +351,11 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
 
 RegExp * parse_regexp(char regExpString[BUFFER_SIZE])
 {
-    // printf("parse_regexp(): %s\n", regExpString);
+    // printf("parse_regexp() recebeu: %s\n", regExpString);
 
     RegExp *exp = parse_uniao(regExpString);
     return exp;
 }
-
-/*
-    parse_regexp recebe uma string que É uma união.
-
-    abc|def|ghi
-
-    é dividida em "abc" e "def|ghi".
-    O da esquerda vai para um parse_concat, equanto o da direita vai para um parse_union.
-
-    Se não acha um '|', o parse_union manda a string toda pro parse_concat.
-
- */
-
 
 int main() {
 
