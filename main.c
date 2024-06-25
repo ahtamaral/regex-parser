@@ -4,6 +4,9 @@
 
 #define BUFFER_SIZE 1024
 
+// Comprimento mínimo de string de regExp. Equivale a 1 caracter e 1 pula-linha.
+#define MINIMUM_EXP_STR_SIZE    2
+
 typedef struct parserState
 {
     char buffer[BUFFER_SIZE];
@@ -222,10 +225,19 @@ RegExp *parse_estrela(char starExpString[BUFFER_SIZE])
 
 RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
 {
-
     // printf("parse_concat(): %s\n", ConcatExpString);
 
     int concatExpLen = strlen(ConcatExpString);
+
+    // Condição de contorno: Expressão de concat tem tamanho mínimo.
+
+    if (concatExpLen <= MINIMUM_EXP_STR_SIZE)
+    {
+        RegExp* returnedExp = new_char(ConcatExpString[0]);
+        return returnedExp;
+    }
+
+    // printf("A\n");
 
     int curIdx = 0;
     char nextChar = ConcatExpString[curIdx + 1];
@@ -237,27 +249,42 @@ RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
 
     int starOffset = 0;
 
-    if ( isStarOperator(nextChar) ) {
+    RegExp* child1;
+
+    // Caso 1: Expressão de concat é apenas caracater seguido de asterisco.
+    // Ação: Monta ponteiro para StarExp e retorna logo aqui.
+    // printf("concatExpLen: %d\n", concatExpLen);
+    if ( isStarOperator(nextChar) && concatExpLen <= MINIMUM_EXP_STR_SIZE + 1) {
+            // printf("C\n");
+            child1 = parse_estrela(leftChild);
+            return child1;
+    }
+    // printf("B\n");
+
+    if (isStarOperator(nextChar)) {
         starOffset = 1;
     }
 
-    RegExp* child1;
-    RegExp* child2;
-
-
     strncpy(rightChild, ConcatExpString + (curIdx+1) + starOffset, concatExpLen);
+
+    RegExp* child2;
 
     // printf("Left child: %s\n", leftChild);
     // printf("Right child: %s\n", rightChild);
 
+    // Caso Geral - Filho da esquerda: Se foi detectada uma estrela após o primeiro caracter.
+    // O filho da esquerda é uma StarExp. Senão, é uma basicExp, um caracter.
     if (starOffset == 1) {
         child1 = parse_estrela(leftChild);
     } else {
         child1 = parse_basico(leftChild[0]);
     }
 
+    // Caso geral - Filho da direita: Se tem comprimento maior que o mínimo (i.e, tem mais de um caractere), o filho esquerdo é uma ConcatExp.
+    // Senão, é apenas um caracter, sendo uma basicExp.
+
     // printf("Right child len: %d\n", strlen(rightChild));
-    if (strlen(rightChild) > 2 /*Caracter + newLine*/) {
+    if (strlen(rightChild) > MINIMUM_EXP_STR_SIZE) {
         child2 = parse_concat(rightChild);
     } else {
         child2 = parse_basico(rightChild[0]);
@@ -268,8 +295,6 @@ RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
     return concatExp;
 
     // Se comprimento do filho da esquerda > 1, parsea concat. Senão parsea básico.
-
-    // parse_concat(rightChild);
 }
 
 RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
@@ -290,6 +315,7 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
         
         if (isUnionOperator(curChar) == 1) {
             unionOperatorFound = 1;
+            // printf("Operator | found at position %d\n", curIdx);
             break;
         }
 
@@ -300,14 +326,20 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
     RegExp *child1;
     RegExp *child2;
 
+    RegExp *returnedExp;
+
     if (unionOperatorFound == 0)
     {
+        // printf("Left child: %s", UnionExpString);
+        // printf("Right child: EMPTY\n");
+
         child1 = parse_concat(UnionExpString);
         child2 = new_empty(); // Será? Se não achar operador '|' nunca entra aqui, mas vou deixar por precaução.
+        returnedExp = parse_concat(UnionExpString);
     }
     else {
         int unionIdx = curIdx;
-
+        // printf("Entered there\n.");
         strncpy(leftChild, UnionExpString, unionIdx);
         strncpy(rightChild, UnionExpString + unionIdx + 1, regExpLen);
 
@@ -316,10 +348,10 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
 
         child1 = parse_concat(leftChild);
         child2 = parse_uniao(rightChild);
-    }
+        returnedExp = new_union(child1, child2);
+    }  
 
-    RegExp* unionExp = new_union(child1, child2);
-    return unionExp;
+    return returnedExp;
 }
 
 RegExp * parse_regexp(char regExpString[BUFFER_SIZE])
@@ -339,27 +371,6 @@ RegExp * parse_regexp(char regExpString[BUFFER_SIZE])
     O da esquerda vai para um parse_concat, equanto o da direita vai para um parse_union.
 
     Se não acha um '|', o parse_union manda a string toda pro parse_concat.
-
- */
-
-// ab | c
-
-
-/*
-    a*bcde
-
-    CONCAT
-        STAR    
-            CHAR a 
-        CONCAT
-            CHAR b
-            CONCAT
-                CHAR c
-                CONCAT
-                    CHAR d
-                    CHAR e
-                    
-    
 
  */
 

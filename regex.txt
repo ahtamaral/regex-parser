@@ -1,8 +1,12 @@
 a
 b
 ab
+abc
+abcdef
 a|b
+a|b|c
 a*
 b*
+a*b
 ab*
-abc**
+c**
