@@ -50,7 +50,7 @@ static RegExp *parse_regexp(char buffer[BUFFER_SIZE]);
 static RegExp *parse_uniao(char buffer[BUFFER_SIZE]);
 static RegExp *parse_concat(char buffer[BUFFER_SIZE]);
 static RegExp *parse_estrela(char buffer[BUFFER_SIZE]);
-static RegExp *parse_basico(char buffer[BUFFER_SIZE]);
+static RegExp *parse_basico(char buffer);
 
 // ------------------------------------------------
 
@@ -200,9 +200,75 @@ unsigned short isChar(char c){
     return 0;
 }
 
-RegExp* parse_concat(char buffer[BUFFER_SIZE])
+RegExp *parse_basico(char basicExpChar)
 {
-    printf("parse_concat(): %s\n", buffer);
+    printf("parse_basico(): %c\n", basicExpChar);
+
+    RegExp *basicExp = new_char(basicExpChar);
+
+    return basicExp;
+}
+
+RegExp *parse_estrela(char starExpString[BUFFER_SIZE])
+{
+    printf("parse_estrela(): %s\n", starExpString);
+
+    RegExp *basicExp = parse_basico(starExpString[0]);
+
+    RegExp *starExp = new_star(basicExp);
+}
+
+RegExp* parse_concat(char ConcatExpString[BUFFER_SIZE])
+{
+
+    printf("parse_concat(): %s\n", ConcatExpString);
+
+    int concatExpLen = strlen(ConcatExpString);
+
+    int curIdx = 0;
+    char curChar = ConcatExpString[curIdx];
+    char nextChar = ConcatExpString[curIdx + 1];
+
+    char leftChild[BUFFER_SIZE];
+    char rightChild[BUFFER_SIZE];
+
+    strncpy(leftChild, ConcatExpString, curIdx+1);
+
+    int starOffset = 0;
+
+    if ( isStarOperator(nextChar) ) {
+        starOffset = 1;
+    }
+
+    RegExp* child1;
+    RegExp* child2;
+
+
+    strncpy(rightChild, ConcatExpString + (curIdx+1) + starOffset, concatExpLen);
+
+    // printf("Left child: %s\n", leftChild);
+    // printf("Right child: %s\n", rightChild);
+
+    if (starOffset == 1) {
+        child1 = parse_estrela(leftChild);
+    } else {
+        child1 = parse_basico(leftChild[0]);
+    }
+
+    // printf("Right child len: %d\n", strlen(rightChild));
+    if (strlen(rightChild) > 2 /*Caracter + newLine*/) {
+        child2 = parse_concat(rightChild);
+    } else {
+        child2 = parse_basico(rightChild[0]);
+    }
+
+    RegExp* concatExp = new_concat(child1, child2);
+
+    return concatExp;
+
+    // Se comprimento do filho da esquerda > 1, parsea concat. Senão parsea básico.
+
+    // parse_concat(rightChild);
 }
 
 RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
@@ -219,7 +285,7 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
 
     int unionOperatorFound = 0;
 
-    while (isNewLine(curChar) != 1){
+    while (isNewLine(curChar) != 1) {
         
         if (isUnionOperator(curChar) == 1) {
             unionOperatorFound = 1;
@@ -230,9 +296,13 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
         curChar = UnionExpString[curIdx];
     }
 
+    RegExp *child1;
+    RegExp *child2;
+
     if (unionOperatorFound == 0)
     {
-        parse_concat(UnionExpString);
+        child1 = parse_concat(UnionExpString);
+        child2 = new_empty(); // Será? Se não achar operador '|' nunca entra aqui, mas vou deixar por precaução.
     }
     else {
         int unionIdx = curIdx;
@@ -240,21 +310,22 @@ RegExp* parse_uniao(char UnionExpString[BUFFER_SIZE])
         strncpy(leftChild, UnionExpString, unionIdx);
         strncpy(rightChild, UnionExpString + unionIdx + 1, regExpLen);
 
-        printf("Left child: %s\n", leftChild);
-        printf("Right child: %s\n", rightChild);
+        // printf("Left child: %s\n", leftChild);
+        // printf("Right child: %s\n", rightChild);
 
-        parse_concat(leftChild);
-        parse_regexp(rightChild);
+        child1 = parse_concat(leftChild);
+        child2 = parse_uniao(rightChild);
     }
+
+    RegExp* unionExp = new_concat(child1, child2);
 
 }
 
 RegExp * parse_regexp(char regExpString[BUFFER_SIZE])
 {
+    printf("parse_regexp(): %s\n", regExpString); 
 
-    printf("parse_regexp(): %s\n", regExpString);
-
-    parse_uniao(regExpString);
+    RegExp *exp = parse_uniao(regExpString);
 }
 
 /*
@@ -271,6 +342,26 @@ RegExp * parse_regexp(char regExpString[BUFFER_SIZE])
 
 // ab | c
 
+
+/*
+    a*bcde
+
+    CONCAT
+        STAR    
+            CHAR a 
+        CONCAT
+            CHAR b
+            CONCAT
+                CHAR c
+                CONCAT
+                    CHAR d
+                    CHAR e
+                    
+    
+
+ */
+
+
 int main(int argc, char *argv[]) {
 
     char buffer[BUFFER_SIZE];
@@ -278,12 +369,15 @@ int main(int argc, char *argv[]) {
     while(fgets(buffer, BUFFER_SIZE, stdin)){
         printf("RegExp: %s\n\n", buffer);
 
-        parse_regexp(buffer);
+        RegExp *exp = parse_regexp(buffer);
 
+        printTreePreOrder(exp, 0);
     }
 
     return 0;
 }
+
+
 
 // Caso de teste 1: abc** <---> a(b(c**))
     
