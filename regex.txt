@@ -5,6 +5,8 @@ abc
 abcdef
 a|b
 a|b|c
+ab|c
+a|bc
 a*
 b*
 a*b
