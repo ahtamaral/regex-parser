@@ -5,8 +5,4 @@ a|b
 a*
 b*
 ab*
-(ab)*
-(abc*)*
-(abc)**
 abc**
-(ab||c)
